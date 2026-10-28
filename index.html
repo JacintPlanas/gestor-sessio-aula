@@ -27,7 +27,7 @@
 :root[data-theme="dark"]{ --paper:#0B1424; --sobre:#111D31; --tinta:#E6EDF7; --tinta2:#A3B2C7; --fil:#24344C; --boira:#1A2840; --inv:#0B1424;
   --accent:#7B93FF; --sobre-accent:#0B1424; --accent-clar:#1F2C55; --alerta:#FF6B76; --alerta-clar:#3A1B22; --fosc:1; color-scheme:dark; }
 html{ height:100%; scroll-padding-top:env(safe-area-inset-top,0px); }
-*,*::before,*::after{ box-sizing:inherit; }
+*,*::before,*::after{ box-sizing:border-box; }
 body{ margin:0; min-height:100%; background:var(--paper); color:var(--tinta);
   font-family:'Quicksand','Nunito','Segoe UI',system-ui,-apple-system,sans-serif; font-size:17px; line-height:1.45; }
 button,input,select,textarea{ font:inherit; color:inherit; }
@@ -96,9 +96,10 @@ h2{ font-size:1.15rem; margin:0 0 .6rem; }
 .linia.doble .v.tb{ border-left:3px dashed var(--alerta); margin-left:-1.5px; z-index:1; }
 .linia.doble .v.tb.ini{ border-left:2px solid var(--alerta); opacity:.5; }
 .linia.doble .escala{ position:relative; height:22px; margin-top:6px; }
-.linia .nota-l{ position:absolute; left:0; right:0; bottom:0; font-size:.82rem; color:var(--tinta2); font-weight:600; margin:0; }
-.linia.amb-nota{ padding-bottom:54px; }
-.linia.amb-nota .escala{ bottom:26px; }
+.linia .nota-l{ font-size:.82rem; color:var(--tinta2); font-weight:600; margin:30px 0 0; }
+.linia.amb-nota{ padding-bottom:0; }
+.linia.amb-nota .escala{ top:86px; bottom:auto; }
+.linia.amb-nota .marca-pla{ top:82px; bottom:auto; }
 .linia.mini{ padding:0; }
 .linia.mini .pista-t{ height:22px; box-shadow:none; }
 
@@ -238,7 +239,8 @@ body.projectant{ background:#FFFFFF; }
 .fase details{ border-top:1px solid var(--fil); padding:.2rem .7rem .7rem; }
 .fase summary{ cursor:pointer; color:var(--tinta2); font-weight:600; font-size:.92rem; padding:.3rem 0; }
 .fase .detall{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.6rem .9rem; }
-.fase .detall label{ font-size:.88rem; font-weight:600; display:flex; flex-direction:column; gap:.2rem; }
+.fase .detall label{ font-size:.88rem; font-weight:600; display:flex; flex-direction:column; gap:.2rem; min-width:0; }
+.fase .detall textarea{ resize:vertical; }
 .fase .detall .ample{ grid-column:1/-1; }
 .fase .detall .check{ flex-direction:row; align-items:center; gap:.45rem; }
 .fase .detall .check input{ width:auto; }
@@ -317,7 +319,8 @@ textarea.nota-reg{ width:100%; min-height:6rem; border:1.5px solid var(--fil); b
         <button class="boto ple" id="botoComenca">Comença la sessió</button>
         <button class="boto" id="botoPipP">Obre la finestra flotant</button>
       </div>
-      <p class="pista" id="notaPip" style="margin:.5rem 0 0">La finestra flotant (opció B) només s'obre amb aquest fitxer desat a l'ordinador i obert amb Chrome o Edge. Es pot obrir abans o després de començar.</p></div>
+      <p class="pista" id="notaPip" style="margin:.5rem 0 0">La finestra flotant (opció B) només s'obre amb Chrome o Edge, amb l'eina oberta des de la seva adreça web o des del fitxer. Es pot obrir abans o després de començar.</p>
+      <label class="pista" id="filaPipFosc" style="display:flex;align-items:center;gap:.45rem;margin:.5rem 0 0;font-weight:600"><input type="checkbox" id="chkPipFosc"> Finestra flotant fosca, del mateix color que la barra del navegador</label></div>
       <details style="margin-top:1.6rem">
         <summary class="pista" style="cursor:pointer;font-weight:600">Avisos</summary>
         <div class="inici">
@@ -1156,6 +1159,7 @@ function pintaInici(){
   pintaLinia($('liniaInici'), false, true);
   $('selPreavis').value = String(S.settings.preavis); $('selQuan').value = S.settings.quanSona || 'fase';
   $('selSo').value = S.settings.so === true ? 'fort' : S.settings.so === false ? 'cap' : (S.settings.so || 'fort'); $('chkAuto').checked = !!S.settings.auto;
+  $('chkPipFosc').checked = !!S.settings.pipFosc;
 }
 let estructuraClau = '';
 function pintaRun(forca){
@@ -1254,6 +1258,7 @@ function pintaProjectaA(doc, flotant){
   if (!caixa || !c || !lin) return;
   const r = S.run, now = Date.now();
   caixa.classList.toggle('sobri', S.settings.colorsProj === false);
+  if (flotant){ const fosc = !!S.settings.pipFosc; caixa.classList.toggle('fosc', fosc); if (doc.body) doc.body.classList.toggle('fosc', fosc); }
   if (r) caixa.style.setProperty('--sat', colorFase(r.fases[r.idx].nom).sat); else caixa.style.removeProperty('--sat');
   caixa.classList.remove('amb-diapo');
   if (!r){ lin.hidden = false; const h0 = '<div class="p-temps num">'+hhmm(now)+'</div>' + (flotant ? '' : '<div class="p-ins">'+esc(plaActual() ? plaActual().nom : '')+'</div>'); if (c.dataset.h !== h0){ c.innerHTML = h0; c.dataset.h = h0; } pintaLinia(lin, true); return; }
@@ -1300,7 +1305,15 @@ async function obrePip(){
     [...document.styleSheets].forEach(sh => { try { [...sh.cssRules].forEach(rl => { css += rl.cssText + '\n'; }); } catch(e){} });
     css += 'html,body{margin:0;height:100%;background:#fff;overflow:hidden;font-family:Quicksand,"Segoe UI",system-ui,sans-serif;color:#0E2841}' +
       '#projecta.flot{height:100vh;min-height:0}#projecta.flot .p-caixa{padding:5cqh 4cqw 6cqh}#projecta.flot .p-dalt{height:0}' +
-      '#projecta.flot .p-nom{font-size:min(9cqw,16cqh)}#projecta.flot .p-temps{font-size:min(20cqw,34cqh)}';
+      '#projecta.flot .p-nom{font-size:min(9cqw,16cqh)}#projecta.flot .p-temps{font-size:min(20cqw,34cqh)}' +
+      /* fosca: el mateix gris que la barra de la finestra de Chrome, perquè la barra no es distingeixi */
+      'body.fosc{background:#202124}' +
+      '#projecta.flot.fosc{--paper:#202124;--sobre:#202124;--tinta:#FFFFFF;--tinta2:#BDC1C6;--fil:#3C4043;--boira:#35363A;background:#202124;color:#FFFFFF}' +
+      '#projecta.flot.fosc .linia .pista-t{box-shadow:none}#projecta.flot.fosc .p-franja{display:none}' +
+      '#projecta.flot.fosc .linia.doble .tram .h-ple{background:#E8EAED}' +
+      '#projecta.flot.fosc .linia.doble .v.ag,#projecta.flot.fosc .linia.doble .v.tb{border-left-color:#FFFFFF}' +
+      '#projecta.flot.fosc .linia.doble .v.ag.pom::after{border-color:#FFFFFF;background:#202124}' +
+      '#projecta.flot.fosc .linia.doble .cap-b,#projecta.flot.fosc .linia.doble .escala span{color:#BDC1C6}';
     const st = d.createElement('style'); st.textContent = css; d.head.appendChild(st);
     d.body.innerHTML = '<div id="projecta" class="flot"><div class="p-franja"></div><div class="p-caixa"><div class="p-dalt"></div><div class="centre" id="pCentre"></div><div class="linia mini" id="pLinia" aria-hidden="true"></div></div></div>';
     pip.addEventListener('pagehide', () => { pip = null; });
@@ -1516,7 +1529,7 @@ function pintaAjuda(){
 <li>Cada fase té el seu nivell a «Què veu l'alumnat del temps». Per defecte, a «A les pissarres» i «Ho mirem junts» no es veu res del temps, ni barres ni compte enrere; a la resta, tot.</li>
 <li>Per projectar-la el dijous en mode estès: obre l'eina en una <strong>segona finestra</strong>, arrossega-la a la pantalla gran, posa-la a «Projecta» i a pantalla completa. Les dues finestres se segueixen soles. Si mai no se seguissin, posa una sola finestra a «Projecta» a la pantalla gran durant el Tour i fes-la avançar amb <kbd>→</kbd>.</li>
 <li><strong>Diapositiva dins de la projecció</strong>: a «Planifica», a cada fase, pots afegir la imatge d'una diapositiva (exportada en PNG, o copiada i enganxada amb Ctrl+V). Quan la fase arriba, «Projecta» mostra la diapositiva gran, amb el nom de la fase a dalt i, a sota, el que hagis triat a «Què veu l'alumnat del temps»: res, les barres sense números, o les barres i el compte enrere. L'original continua sent el <code>.pptx</code>: si canvies la diapositiva, torna-la a exportar.</li>
-<li><strong>Finestra flotant (opció B)</strong>: una finestra petita, que es pot moure i fer gran, amb el nom de la fase, el compte enrere i les barres, segons el nivell de cada fase. Es posa damunt del PowerPoint a la pantalla gran, i la diapositiva la continua posant el PowerPoint. <strong>Funciona a Chrome o Edge amb l'eina oberta des de la seva adreça web o des del fitxer</strong>; dins de claude.ai, no.</li>
+<li><strong>Finestra flotant (opció B)</strong>: una finestra petita, que es pot moure i fer gran, amb el nom de la fase, el compte enrere i les barres, segons el nivell de cada fase. Es posa damunt del PowerPoint a la pantalla gran, i la diapositiva la continua posant el PowerPoint. <strong>Funciona a Chrome o Edge amb l'eina oberta des de la seva adreça web o des del fitxer</strong>; dins de claude.ai, no. La barra fosca de dalt, amb l'adreça i la creu de tancar, la posa el navegador i cap pàgina no la pot treure. Si marques «Finestra flotant fosca», a «Condueix», la finestra pren el mateix color que la barra i les dues es veuen com un sol bloc.</li>
 </ul>
 
 <h2 style="--punt:${c('apunts')}">En acabar</h2>
@@ -1550,6 +1563,7 @@ $('selQuan').addEventListener('change', e => { S.settings.quanSona = e.target.va
 $('provaFi').addEventListener('click', () => so('fi', true));
 $('provaAvis').addEventListener('click', () => so('preavis', true));
 $('chkAuto').addEventListener('change', e => { S.settings.auto = e.target.checked; S.settings.at = Date.now(); desa(true); });
+$('chkPipFosc').addEventListener('change', e => { S.settings.pipFosc = e.target.checked; S.settings.at = Date.now(); desa(true); pintaPip(); });
 $('botoComenca').addEventListener('click', comenca);
 $('botoSeguent').addEventListener('click', () => ordre('seguent'));
 $('botoAnterior').addEventListener('click', () => ordre('anterior'));
@@ -1651,7 +1665,7 @@ $('importaOk').addEventListener('click', () => {
 /* ---------- arrencada ---------- */
 carregaLocal(); aplicaTema(); netejaImatges();
 (() => { let dins = false; try { dins = window.top !== window; } catch(e){ dins = true; }
-  if (dins) ['botoPip','botoPipD','botoPipP','notaPip'].forEach(id => { const el = $(id); if (el) el.hidden = true; }); })();
+  if (dins) ['botoPip','botoPipD','botoPipP','notaPip','filaPipFosc'].forEach(id => { const el = $(id); if (el) el.hidden = true; }); })();
 $('nomsCurs').innerHTML = NOMS_CURS.map(n => '<option value="'+esc(n)+'">').join('');
 if (S.run){
   const prev = S.run.master; S.run.master = 'pendent';
